@@ -384,6 +384,11 @@ export default function Home() {
                   <div className="flex items-center gap-3 mb-2">
                     <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                       Delta Analysis for {optionsChain.ticker}
+                      {optionsChain.companyName && (
+                        <span className="font-normal text-gray-500 dark:text-gray-400 ml-2">
+                          ({optionsChain.companyName})
+                        </span>
+                      )}
                     </h2>
                     <button
                       onClick={() => toggleFavorite(optionsChain.ticker)}
@@ -399,11 +404,6 @@ export default function Home() {
                       </svg>
                     </button>
                   </div>
-                  {optionsChain.companyName && (
-                    <p className="text-sm md:text-lg font-normal text-gray-600 dark:text-gray-400 mb-2">
-                      ({optionsChain.companyName})
-                    </p>
-                  )}
                   <div className="flex items-center gap-3 flex-wrap">
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {optionsChain.calls.length + optionsChain.puts.length} option contracts
