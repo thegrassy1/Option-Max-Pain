@@ -210,13 +210,13 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Option Max Pain</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Option Max Pain</h1>
             <div className="flex items-center gap-4">
               <a
                 href="https://optionmaxpain.com"
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-xs md:text-sm text-gray-600 hover:text-gray-900"
               >
                 optionmaxpain.com
               </a>
@@ -229,18 +229,18 @@ export default function Home() {
       <main className="container mx-auto px-4 pt-24 pb-12">
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4 px-2">
               Max Pain Calculator & Delta Management
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
               Calculate max pain strike prices and visualize delta hedging pressure for stocks and crypto options
             </p>
           </div>
 
           {/* Search Form */}
-          <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-            <form onSubmit={handleSubmit} className="flex gap-4">
+          <div className="bg-white rounded-lg shadow-md p-4 md:p-8 mb-8">
+            <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <label htmlFor="ticker" className="block text-sm font-medium text-gray-700 mb-2">
                   Ticker Symbol
@@ -259,7 +259,7 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="btn btn--primary px-8 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn btn--primary w-full md:w-auto md:px-8 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Loading...' : 'Analyze'}
                 </button>
@@ -295,22 +295,22 @@ export default function Home() {
           {/* Results */}
           {optionsChain && deltaData.length > 0 && (
             <div className="mt-8">
-              <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+              <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
                   Delta Analysis for {optionsChain.ticker}
                   {optionsChain.companyName && (
-                    <span className="text-lg font-normal text-gray-600 ml-2">
+                    <span className="text-sm md:text-lg font-normal text-gray-600 ml-2 block md:inline">
                       ({optionsChain.companyName})
                     </span>
                   )}
                 </h2>
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <p className="text-gray-600">
-                      Based on {optionsChain.calls.length + optionsChain.puts.length} option contracts
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-sm text-gray-600">
+                      {optionsChain.calls.length + optionsChain.puts.length} option contracts
                     </p>
                     {dataAge && (
-                      <span className={`text-sm px-3 py-1 rounded-full ${
+                      <span className={`text-[10px] md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full ${
                         isLive 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-gray-100 text-gray-600'
@@ -323,7 +323,7 @@ export default function Home() {
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="btn btn--primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn btn--primary w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? 'Refreshing...' : '🔄 Refresh Live Data'}
                 </button>
