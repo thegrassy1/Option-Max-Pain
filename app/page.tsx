@@ -52,7 +52,7 @@ export default function Home() {
         setError(result.warning); // Show as info message, not error
       }
 
-      const chain = result.data;
+      const chain: OptionsChain = result.data;
       
       // Check if we have data
       if (!chain || (!chain.calls || chain.calls.length === 0) && (!chain.puts || chain.puts.length === 0)) {
