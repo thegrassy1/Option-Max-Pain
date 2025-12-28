@@ -156,7 +156,7 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
       const priceDiff = Math.abs(strikeValue - optionsChain.spotPrice);
       const range = zoomRange[1] - zoomRange[0];
       if (priceDiff < range * 0.01) {
-        return null; // Don't render this tick
+        return <g />; // Don't render this tick, but return a valid element
       }
     }
     
