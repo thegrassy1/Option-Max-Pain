@@ -346,8 +346,8 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
                   }}
                 />
               )}
-              <Bar dataKey="buyPressure" fill="#10b981" name="Buy Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 4 : 8} />
-              <Bar dataKey="sellPressure" fill="#ef4444" name="Sell Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 4 : 8} />
+              <Bar dataKey="buyPressure" fill="#10b981" name="Buy Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
+              <Bar dataKey="sellPressure" fill="#ef4444" name="Sell Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
             </BarChart>
           </ResponsiveContainer>
         </div>
