@@ -14,9 +14,23 @@ export default function Home() {
   const [dataAge, setDataAge] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // Load favorites from local storage on startup
+  // Load theme and favorites from local storage on startup
   useEffect(() => {
+    // Theme
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
+    }
+
+    // Favorites
     const saved = localStorage.getItem('ticker-favorites');
     if (saved) {
       try {
@@ -31,6 +45,17 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('ticker-favorites', JSON.stringify(favorites));
   }, [favorites]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   const toggleFavorite = (symbol: string) => {
     setFavorites(prev => 
@@ -233,16 +258,31 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Option Max Pain</h1>
-            <div className="flex items-center gap-4">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Option Max Pain</h1>
+            <div className="flex items-center gap-2 md:gap-4">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+              >
+                {theme === 'light' ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m0 13.5V21m8.967-8.967h-2.25M3 12h2.25m13.509-8.509l-1.591 1.591M6.777 17.223l-1.591 1.591m12.188 0l-1.591-1.591M6.777 6.777l-1.591-1.591M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" />
+                  </svg>
+                )}
+              </button>
               <a
                 href="https://optionmaxpain.com"
-                className="text-xs md:text-sm text-gray-600 hover:text-gray-900"
+                className="text-xs md:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
                 optionmaxpain.com
               </a>
@@ -256,19 +296,19 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4 px-2">
+            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4 px-2">
               Max Pain Calculator & Delta Management
             </h2>
-            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
+            <p className="text-base md:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
               Calculate max pain strike prices and visualize delta hedging pressure for stocks and crypto options
             </p>
           </div>
 
           {/* Search Form */}
-          <div className="bg-white rounded-lg shadow-md p-4 md:p-8 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-8 mb-8 border border-gray-200 dark:border-gray-700">
             <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
-                <label htmlFor="ticker" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="ticker" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Ticker Symbol
                 </label>
                 <input
@@ -294,7 +334,7 @@ export default function Home() {
 
             {favorites.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Favorites:</span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Favorites:</span>
                 {favorites.map(fav => (
                   <button
                     key={fav}
@@ -302,7 +342,7 @@ export default function Home() {
                       setTicker(fav);
                       fetchData(fav, false);
                     }}
-                    className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-medium hover:bg-primary-100 transition-colors border border-primary-200"
+                    className="px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full text-xs font-medium hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors border border-primary-200 dark:border-primary-800"
                   >
                     {fav}
                   </button>
@@ -313,13 +353,13 @@ export default function Home() {
             {error && (
               <div className={`mt-4 p-4 rounded-lg border ${
                 error.includes('mock data') || error.includes('API keys')
-                  ? 'bg-yellow-50 border-yellow-200'
-                  : 'bg-red-50 border-red-200'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
               }`}>
                 <p className={`text-sm ${
                   error.includes('mock data') || error.includes('API keys')
-                    ? 'text-yellow-800'
-                    : 'text-red-800'
+                    ? 'text-yellow-800 dark:text-yellow-400'
+                    : 'text-red-800 dark:text-red-400'
                 }`}>
                   {error}
                 </p>
@@ -327,7 +367,7 @@ export default function Home() {
                   <a 
                     href="/README_API_KEYS.md" 
                     target="_blank"
-                    className="text-yellow-700 hover:text-yellow-900 text-sm underline mt-2 inline-block"
+                    className="text-yellow-700 dark:text-yellow-500 hover:text-yellow-900 dark:hover:text-yellow-400 text-sm underline mt-2 inline-block"
                   >
                     Learn how to set up API keys →
                   </a>
@@ -342,15 +382,15 @@ export default function Home() {
               <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                       Delta Analysis for {optionsChain.ticker}
                     </h2>
                     <button
                       onClick={() => toggleFavorite(optionsChain.ticker)}
                       className={`p-1.5 rounded-full transition-colors ${
                         favorites.includes(optionsChain.ticker)
-                          ? 'text-yellow-500 hover:bg-yellow-50'
-                          : 'text-gray-300 hover:bg-gray-100'
+                          ? 'text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                          : 'text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800'
                       }`}
                       title={favorites.includes(optionsChain.ticker) ? "Remove from Favorites" : "Add to Favorites"}
                     >
@@ -360,19 +400,19 @@ export default function Home() {
                     </button>
                   </div>
                   {optionsChain.companyName && (
-                    <p className="text-sm md:text-lg font-normal text-gray-600 mb-2">
+                    <p className="text-sm md:text-lg font-normal text-gray-600 dark:text-gray-400 mb-2">
                       ({optionsChain.companyName})
                     </p>
                   )}
                   <div className="flex items-center gap-3 flex-wrap">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {optionsChain.calls.length + optionsChain.puts.length} option contracts
                     </p>
                     {dataAge && (
                       <span className={`text-[10px] md:text-sm px-2 md:px-3 py-0.5 md:py-1 rounded-full ${
                         isLive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-600'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' 
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                       }`}>
                         {isLive ? '🟢 Live Data' : `📊 ${dataAge}`}
                       </span>
@@ -393,19 +433,19 @@ export default function Home() {
 
           {/* Info Section */}
           {!optionsChain && (
-            <div className="bg-white rounded-lg shadow-md p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">How It Works</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 border border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">How It Works</h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">What is Delta?</h4>
-                  <p className="text-gray-600 text-sm">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What is Delta?</h4>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
                     Delta measures how much an option's price changes when the underlying asset moves $1. 
                     Market makers who sell options need to hedge their positions to stay delta-neutral.
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Why It Matters</h4>
-                  <p className="text-gray-600 text-sm">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Why It Matters</h4>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
                     When prices move, market makers must buy or sell shares to hedge. This creates 
                     predictable buying and selling pressure at key strike levels, especially where 
                     there's high open interest.
@@ -418,9 +458,9 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">
         <div className="container mx-auto px-4 py-6">
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
             Options Delta Monitor - Visualize market maker hedging requirements
           </p>
         </div>
