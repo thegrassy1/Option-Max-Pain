@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { calculateDeltaManagement, OptionData, calculateNextExpirationMaxPain, calculateMaxPainForAllExpirations } from '@/lib/delta-calculator';
 import DeltaVisualization from '@/components/DeltaVisualization';
 import { OptionsChain } from '@/lib/options-api';
@@ -13,6 +13,32 @@ export default function Home() {
   const [deltaData, setDeltaData] = useState<any[]>([]);
   const [dataAge, setDataAge] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  // Load favorites from local storage on startup
+  useEffect(() => {
+    const saved = localStorage.getItem('ticker-favorites');
+    if (saved) {
+      try {
+        setFavorites(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load favorites', e);
+      }
+    }
+  }, []);
+
+  // Save favorites to local storage whenever the list changes
+  useEffect(() => {
+    localStorage.setItem('ticker-favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  const toggleFavorite = (symbol: string) => {
+    setFavorites(prev => 
+      prev.includes(symbol) 
+        ? prev.filter(f => f !== symbol) 
+        : [...prev, symbol]
+    );
+  };
 
   const fetchData = async (tickerSymbol: string, live: boolean = false) => {
     setLoading(true);
@@ -266,6 +292,24 @@ export default function Home() {
               </div>
             </form>
 
+            {favorites.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2 items-center">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Favorites:</span>
+                {favorites.map(fav => (
+                  <button
+                    key={fav}
+                    onClick={() => {
+                      setTicker(fav);
+                      fetchData(fav, false);
+                    }}
+                    className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-medium hover:bg-primary-100 transition-colors border border-primary-200"
+                  >
+                    {fav}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {error && (
               <div className={`mt-4 p-4 rounded-lg border ${
                 error.includes('mock data') || error.includes('API keys')
@@ -296,15 +340,30 @@ export default function Home() {
           {optionsChain && deltaData.length > 0 && (
             <div className="mt-8">
               <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
-                  Delta Analysis for {optionsChain.ticker}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                      Delta Analysis for {optionsChain.ticker}
+                    </h2>
+                    <button
+                      onClick={() => toggleFavorite(optionsChain.ticker)}
+                      className={`p-1.5 rounded-full transition-colors ${
+                        favorites.includes(optionsChain.ticker)
+                          ? 'text-yellow-500 hover:bg-yellow-50'
+                          : 'text-gray-300 hover:bg-gray-100'
+                      }`}
+                      title={favorites.includes(optionsChain.ticker) ? "Remove from Favorites" : "Add to Favorites"}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                        <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
                   {optionsChain.companyName && (
-                    <span className="text-sm md:text-lg font-normal text-gray-600 ml-2 block md:inline">
+                    <p className="text-sm md:text-lg font-normal text-gray-600 mb-2">
                       ({optionsChain.companyName})
-                    </span>
+                    </p>
                   )}
-                </h2>
                   <div className="flex items-center gap-3 flex-wrap">
                     <p className="text-sm text-gray-600">
                       {optionsChain.calls.length + optionsChain.puts.length} option contracts
