@@ -204,6 +204,12 @@ export class MarketDataProvider implements DataProvider {
     }
 
     const data = await response.json();
+    
+    // Check if we got any options
+    if (!data.options || !Array.isArray(data.options) || data.options.length === 0) {
+      throw new Error(`No options data found for ${normalizedTicker} from MarketData.app`);
+    }
+
     return this.transformMarketDataData(normalizedTicker, data);
   }
 
@@ -891,21 +897,21 @@ export class ProviderManager {
       }
       
       // Fallback to mock data for crypto
-      const { fetchOptionsChain } = await import('./options-api');
-      return fetchOptionsChain(normalizedTicker);
+      const { generateMockData } = await import('./options-api');
+      return generateMockData(normalizedTicker);
     }
     
     // For stocks, use regular providers
     // If we've already detected auth failure, skip API calls and go straight to mock data
     if (this.authFailureDetected) {
-      const { fetchOptionsChain } = await import('./options-api');
-      return fetchOptionsChain(normalizedTicker);
+      const { generateMockData } = await import('./options-api');
+      return generateMockData(normalizedTicker);
     }
 
     if (this.providers.length === 0) {
       // No API keys configured, use mock data (silently, we already warned)
-      const { fetchOptionsChain } = await import('./options-api');
-      return fetchOptionsChain(normalizedTicker);
+      const { generateMockData } = await import('./options-api');
+      return generateMockData(normalizedTicker);
     }
 
     // Try providers in order, with fallback
@@ -916,6 +922,12 @@ export class ProviderManager {
       
       try {
         const result = await provider.fetchOptionsChain(ticker);
+        
+        // If we got a result but it's empty after filtering, throw to try next provider or mock
+        if (result.calls.length === 0 && result.puts.length === 0) {
+          throw new Error(`Provider ${provider.name} returned 0 options after filtering for ${ticker}`);
+        }
+
         // Success! Reset auth failure flag
         this.authFailureDetected = false;
         this.hasWarnedAboutAuthFailure = false;
@@ -947,8 +959,11 @@ export class ProviderManager {
     }
 
     // All providers failed, fallback to mock data (silently if we already warned)
-    const { fetchOptionsChain } = await import('./options-api');
-    return fetchOptionsChain(ticker);
+    console.log(`All providers failed for ${ticker}. Falling back to mock data.`);
+    const { generateMockData } = await import('./options-api');
+    const mockData = generateMockData(ticker);
+    console.log(`Generated mock data for ${ticker}: ${mockData.calls.length} calls, ${mockData.puts.length} puts`);
+    return mockData;
   }
 
   getAvailableProviders(): string[] {

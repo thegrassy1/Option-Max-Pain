@@ -83,8 +83,10 @@ export async function getCachedOptionsChain(
     // For now, we'll assume if provider manager returns data, it's either real or mock fallback
   } catch (error) {
     // If provider manager throws, use mock data directly
-    const { fetchOptionsChain } = await import('./options-api');
-    data = await fetchOptionsChain(normalizedTicker);
+    console.log(`Provider manager failed for ${normalizedTicker}:`, error instanceof Error ? error.message : error);
+    const { generateMockData } = await import('./options-api');
+    data = await generateMockData(normalizedTicker);
+    console.log(`Using mock data fallback for ${normalizedTicker}: ${data.calls.length} calls, ${data.puts.length} puts`);
     usingMockData.set(normalizedTicker, true);
   }
 

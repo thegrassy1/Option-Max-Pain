@@ -48,7 +48,7 @@ export async function fetchOptionsChain(ticker: string): Promise<OptionsChain> {
 /**
  * Mock options data generator for demonstration/fallback
  */
-function generateMockData(ticker: string): OptionsChain {
+export function generateMockData(ticker: string): OptionsChain {
   const normalizedTicker = ticker.toUpperCase().trim();
 
   // Mock spot prices for common tickers
