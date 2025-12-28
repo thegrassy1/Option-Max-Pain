@@ -301,7 +301,7 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
 
         <div className="h-[300px] md:h-[500px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#374151' : '#e5e7eb'} />
               <XAxis
                 dataKey="strike"
@@ -313,8 +313,9 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
               />
               <YAxis
                 tick={{ fontSize: isMobile ? 8 : 10, fill: isDark ? '#9ca3af' : '#6b7280' }}
-                width={isMobile ? 30 : 50}
+                width={isMobile ? 40 : 60}
                 stroke={isDark ? '#9ca3af' : '#6b7280'}
+                tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: isMobile ? '10px' : '12px', paddingTop: '20px', color: isDark ? '#d1d5db' : '#374151' }} />
@@ -345,8 +346,8 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
                   }}
                 />
               )}
-              <Bar dataKey="buyPressure" fill="#10b981" name="Buy Pressure" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="sellPressure" fill="#ef4444" name="Sell Pressure" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="buyPressure" fill="#10b981" name="Buy Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 4 : 8} />
+              <Bar dataKey="sellPressure" fill="#ef4444" name="Sell Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 4 : 8} />
             </BarChart>
           </ResponsiveContainer>
         </div>
