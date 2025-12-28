@@ -249,8 +249,8 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
         <h2 className="text-lg md:text-xl font-bold mb-2 dark:text-white">Delta Hedging Requirements</h2>
         
         <div className="mb-6 p-3 md:p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-center">
-            <div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 items-center">
+            <div className="order-1">
               <label className="block text-[10px] text-gray-600 dark:text-gray-400 mb-1">Min Strike</label>
               <input
                 type="text"
@@ -264,7 +264,7 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
               />
             </div>
             
-            <div className="hidden md:block">
+            <div className="col-span-2 md:col-span-1 order-3 md:order-2 flex flex-col gap-2 mt-2 md:mt-0">
               <input
                 type="range"
                 min={minStrike}
@@ -283,7 +283,7 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
               />
             </div>
             
-            <div>
+            <div className="order-2 md:order-3">
               <label className="block text-[10px] text-gray-600 dark:text-gray-400 mb-1">Max Strike</label>
               <input
                 type="text"
