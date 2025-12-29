@@ -257,7 +257,17 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
     <div className="w-full space-y-4 md:space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Current Price</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Price</h3>
+            <div className="group relative">
+              <svg className="w-3.5 h-3.5 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                The current market price of the underlying asset.
+              </span>
+            </div>
+          </div>
           <div className="flex items-baseline gap-2">
             <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">${optionsChain.spotPrice.toFixed(2)}</p>
             {optionsChain.change24hPercent !== undefined && (
@@ -278,7 +288,17 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
               const pcr = totalCalls > 0 ? totalPuts / totalCalls : 0;
               return (
                 <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700/50">
-                  <span>Put/Call Ratio:</span>
+                  <div className="flex items-center gap-1">
+                    <span>Put/Call Ratio:</span>
+                    <div className="group relative">
+                      <svg className="w-3 h-3 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                        Total Puts divided by Total Calls. > 1.0 is Bearish, < 0.7 is Bullish.
+                      </span>
+                    </div>
+                  </div>
                   <span className={`font-bold ${pcr > 1.1 ? 'text-red-500' : pcr < 0.8 ? 'text-green-500' : 'text-gray-600'}`}>
                     {pcr.toFixed(2)}
                   </span>
@@ -287,7 +307,17 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
             })()}
             {optionsChain.impliedVolatility !== undefined && (
               <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
-                <span>Avg. IV:</span>
+                <div className="flex items-center gap-1">
+                  <span>Avg. IV:</span>
+                  <div className="group relative">
+                    <svg className="w-3 h-3 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      Average Implied Volatility across all contracts. Higher IV means more expensive options.
+                    </span>
+                  </div>
+                </div>
                 <span className="font-bold text-blue-500">{(optionsChain.impliedVolatility * 100).toFixed(1)}%</span>
               </div>
             )}
@@ -352,13 +382,33 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
           );
         })()}
         <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border-l-4 border-green-500 border-t border-r border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Buy Pressure</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Buy Pressure</h3>
+            <div className="group relative">
+              <svg className="w-3.5 h-3.5 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                Estimated shares market makers must BUY to hedge their net short call/long put positions at these strikes.
+              </span>
+            </div>
+          </div>
           <p className="text-xl md:text-2xl font-bold text-green-600 dark:text-green-400">
             {totalBuyPressure.toLocaleString()} {optionsChain.ticker}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border-l-4 border-red-500 border-t border-r border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Sell Pressure</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Sell Pressure</h3>
+            <div className="group relative">
+              <svg className="w-3.5 h-3.5 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                Estimated shares market makers must SELL to hedge their net short put/long call positions at these strikes.
+              </span>
+            </div>
+          </div>
           <p className="text-xl md:text-2xl font-bold text-red-600 dark:text-red-400">
             {totalSellPressure.toLocaleString()} {optionsChain.ticker}
           </p>
@@ -370,7 +420,17 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
         <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex-1 space-y-2 text-center md:text-left">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Max Pain Sentiment</h3>
+              <div className="flex items-center justify-center md:justify-start gap-2">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Max Pain Sentiment</h3>
+                <div className="group relative">
+                  <svg className="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    Calculates the 'magnetic' pull of Max Pain. If price is far from Max Pain, market makers often hedge in a way that pulls price back toward the center by expiration.
+                  </span>
+                </div>
+              </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Measures how far the price is from the Max Pain strike. The market often "pulls" the price toward this level as expiration approaches.
               </p>
@@ -576,7 +636,8 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
                     value: isMobile ? '' : 'Gamma Flip', 
                     position: 'bottom', 
                     fill: '#f59e0b', 
-                    fontSize: 10 
+                    fontSize: 10,
+                    className: 'cursor-help'
                   }}
                 />
               )}
