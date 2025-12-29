@@ -59,15 +59,26 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
     
     // Convert to array and sort by strike
     const data = Array.from(aggregated.entries())
-      .map(([strike, values]) => ({
-        strike,
-        hedgingShares: Math.round(values.delta),
-        gammaExposure: Math.round(values.gamma),
-        buyPressure: values.delta > 0 ? values.delta : 0,
-        sellPressure: values.delta < 0 ? Math.abs(values.delta) : 0,
-        posGamma: values.gamma > 0 ? values.gamma : 0,
-        negGamma: values.gamma < 0 ? Math.abs(values.gamma) : 0,
-      }))
+      .map(([strike, values]) => {
+        const contractsAtStrike = deltaData.filter(d => d.strike === strike);
+        const callData = contractsAtStrike.find(d => d.type === 'call');
+        const putData = contractsAtStrike.find(d => d.type === 'put');
+        
+        return {
+          strike,
+          hedgingShares: Math.round(values.delta),
+          gammaExposure: Math.round(values.gamma),
+          buyPressure: values.delta > 0 ? values.delta : 0,
+          sellPressure: values.delta < 0 ? Math.abs(values.delta) : 0,
+          posGamma: values.gamma > 0 ? values.gamma : 0,
+          negGamma: values.gamma < 0 ? Math.abs(values.gamma) : 0,
+          // Extra data for tooltips
+          callOI: callData?.openInterest || 0,
+          putOI: putData?.openInterest || 0,
+          callDelta: callData?.delta || 0,
+          putDelta: putData?.delta || 0,
+        };
+      })
       .sort((a, b) => a.strike - b.strike);
 
     return data;
@@ -168,34 +179,73 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
       if (viewMode === 'delta') {
         return (
           <div className="bg-white dark:bg-gray-800 p-3 md:p-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
-            <p className="font-semibold text-sm md:text-base dark:text-white">Strike: ${data.strike}</p>
-            <p className="text-green-600 dark:text-green-400 text-xs md:text-sm">
-              Buy Pressure: {data.buyPressure.toLocaleString()} {symbol}
-            </p>
-            <p className="text-red-600 dark:text-red-400 text-xs md:text-sm">
-              Sell Pressure: {data.sellPressure.toLocaleString()} {symbol}
-            </p>
-            <p className="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs mt-1">
-              Net: {data.hedgingShares.toLocaleString()} {symbol}
-            </p>
+            <p className="font-semibold text-sm md:text-base dark:text-white border-b border-gray-100 dark:border-gray-700 pb-1 mb-2">Strike: ${data.strike}</p>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Market Pressure</p>
+                <p className="text-green-600 dark:text-green-400 text-xs md:text-sm">
+                  Buy Pressure: {data.buyPressure.toLocaleString()} {symbol}
+                </p>
+                <p className="text-red-600 dark:text-red-400 text-xs md:text-sm">
+                  Sell Pressure: {data.sellPressure.toLocaleString()} {symbol}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div>
+                  <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold">Calls</p>
+                  <p className="text-xs dark:text-gray-300">OI: {data.callOI.toLocaleString()}</p>
+                  <p className="text-[10px] text-gray-500">Δ: {data.callDelta.toFixed(3)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold">Puts</p>
+                  <p className="text-xs dark:text-gray-300">OI: {data.putOI.toLocaleString()}</p>
+                  <p className="text-[10px] text-gray-500">Δ: {data.putDelta.toFixed(3)}</p>
+                </div>
+              </div>
+
+              <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
+                <p className="text-gray-600 dark:text-gray-300 font-bold text-xs">
+                  Net: {data.hedgingShares.toLocaleString()} {symbol}
+                </p>
+              </div>
+            </div>
           </div>
         );
       } else {
         return (
           <div className="bg-white dark:bg-gray-800 p-3 md:p-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
-            <p className="font-semibold text-sm md:text-base dark:text-white">Strike: ${data.strike}</p>
-            <p className="text-blue-600 dark:text-blue-400 text-xs md:text-sm">
-              Positive GEX: {data.posGamma.toLocaleString()}
-            </p>
-            <p className="text-orange-600 dark:text-orange-400 text-xs md:text-sm">
-              Negative GEX: {Math.abs(data.negGamma).toLocaleString()}
-            </p>
-            <p className="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs mt-1 border-t border-gray-100 dark:border-gray-700 pt-1">
-              Total GEX: {data.gammaExposure.toLocaleString()}
-            </p>
-            <p className="text-[9px] text-gray-500 dark:text-gray-500 mt-1 leading-tight">
-              GEX = Gamma * OI * 100. Positive GEX stabilizes markets, negative GEX increases volatility.
-            </p>
+            <p className="font-semibold text-sm md:text-base dark:text-white border-b border-gray-100 dark:border-gray-700 pb-1 mb-2">Strike: ${data.strike}</p>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Gamma Exposure</p>
+                <p className="text-blue-600 dark:text-blue-400 text-xs md:text-sm">
+                  Positive GEX: {data.posGamma.toLocaleString()}
+                </p>
+                <p className="text-orange-600 dark:text-orange-400 text-xs md:text-sm">
+                  Negative GEX: {Math.abs(data.negGamma).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div>
+                  <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold">Calls</p>
+                  <p className="text-xs dark:text-gray-300">OI: {data.callOI.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold">Puts</p>
+                  <p className="text-xs dark:text-gray-300">OI: {data.putOI.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
+                <p className="text-gray-600 dark:text-gray-300 font-bold text-xs">
+                  Total GEX: {data.gammaExposure.toLocaleString()}
+                </p>
+              </div>
+            </div>
           </div>
         );
       }

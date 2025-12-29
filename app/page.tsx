@@ -16,6 +16,23 @@ export default function Home() {
   const [isLive, setIsLive] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [sentiment, setSentiment] = useState<'neutral' | 'bullish' | 'bearish'>('neutral');
+
+  // Update sentiment when options data changes
+  useEffect(() => {
+    if (optionsChain && (optionsChain as any).maxPain) {
+      const spot = optionsChain.spotPrice;
+      const maxPain = (optionsChain as any).maxPain.maxPainStrike;
+      
+      // If max pain is higher than spot, it's bullish (pulls price up)
+      // If max pain is lower than spot, it's bearish (pulls price down)
+      if (maxPain > spot * 1.01) setSentiment('bullish');
+      else if (maxPain < spot * 0.99) setSentiment('bearish');
+      else setSentiment('neutral');
+    } else {
+      setSentiment('neutral');
+    }
+  }, [optionsChain]);
 
   // Load theme and favorites from local storage on startup
   useEffect(() => {
@@ -259,13 +276,36 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className={`min-h-screen transition-colors duration-500 ${
+      sentiment === 'bullish' 
+        ? 'bg-green-50/30 dark:bg-green-900/10' 
+        : sentiment === 'bearish'
+          ? 'bg-red-50/30 dark:bg-red-900/10'
+          : 'bg-gray-50 dark:bg-gray-900'
+    }`}>
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50">
+      <header className={`shadow-sm border-b fixed top-0 left-0 right-0 z-50 transition-colors duration-500 ${
+        sentiment === 'bullish'
+          ? 'bg-white/80 dark:bg-green-900/20 border-green-200/50 dark:border-green-800/50 backdrop-blur-md'
+          : sentiment === 'bearish'
+            ? 'bg-white/80 dark:bg-red-900/20 border-red-200/50 dark:border-red-800/50 backdrop-blur-md'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+      }`}>
         <div className="container mx-auto px-4 py-3 md:py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Option Max Pain</h1>
-            <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Option Max Pain</h1>
+                {sentiment !== 'neutral' && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                    sentiment === 'bullish' 
+                      ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' 
+                      : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                  }`}>
+                    {sentiment}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 md:gap-4">
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -306,7 +346,13 @@ export default function Home() {
           </div>
 
           {/* Search Form */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 md:p-8 mb-8 border border-gray-200 dark:border-gray-700">
+          <div className={`rounded-lg shadow-md p-4 md:p-8 mb-8 border transition-all duration-500 ${
+            sentiment === 'bullish'
+              ? 'bg-white/90 dark:bg-gray-800/90 border-green-200 dark:border-green-800 ring-1 ring-green-100 dark:ring-green-900/30'
+              : sentiment === 'bearish'
+                ? 'bg-white/90 dark:bg-gray-800/90 border-red-200 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30'
+                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+          }`}>
             <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <label htmlFor="ticker" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -326,7 +372,13 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="btn btn--primary w-full md:w-auto md:px-8 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`btn w-full md:w-auto md:px-8 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 ${
+                    sentiment === 'bullish'
+                      ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200 dark:shadow-none'
+                      : sentiment === 'bearish'
+                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 dark:shadow-none'
+                        : 'btn--primary'
+                  }`}
                 >
                   {loading ? 'Loading...' : 'Analyze'}
                 </button>
@@ -338,16 +390,22 @@ export default function Home() {
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="text-[10px] md:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🔥 Popular Right Now:</span>
                   {['BTC', 'NVDA', 'TSLA', 'AAPL', 'SOL'].map(fav => (
-                    <button
-                      key={fav}
-                      onClick={() => {
-                        setTicker(fav);
-                        fetchData(fav, false);
-                      }}
-                      className="px-2.5 py-1 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-full text-[10px] md:text-xs font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600"
-                    >
-                      {fav}
-                    </button>
+                  <button
+                    key={fav}
+                    onClick={() => {
+                      setTicker(fav);
+                      fetchData(fav, false);
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-[10px] md:text-xs font-medium transition-colors border ${
+                      sentiment === 'bullish'
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40'
+                        : sentiment === 'bearish'
+                          ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40'
+                          : 'bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {fav}
+                  </button>
                   ))}
                 </div>
               </div>
