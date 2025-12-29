@@ -10,6 +10,8 @@ export interface OptionsChain {
   ticker: string;
   companyName?: string;
   spotPrice: number;
+  change24h?: number;
+  change24hPercent?: number;
   calls: OptionContract[];
   puts: OptionContract[];
 }
@@ -61,6 +63,10 @@ export function generateMockData(ticker: string): OptionsChain {
   };
 
   const spotPrice = mockSpotPrices[normalizedTicker] || 100;
+  
+  // Generate mock price change
+  const change24hPercent = (Math.random() * 10 - 5); // -5% to +5%
+  const change24h = (spotPrice * change24hPercent) / 100;
 
   // Generate mock options chain
   const calls: OptionContract[] = [];
@@ -107,6 +113,8 @@ export function generateMockData(ticker: string): OptionsChain {
   return {
     ticker: normalizedTicker,
     spotPrice,
+    change24h,
+    change24hPercent,
     calls,
     puts,
   };

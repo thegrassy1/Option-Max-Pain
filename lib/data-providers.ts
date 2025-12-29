@@ -57,6 +57,11 @@ export class PolygonProvider implements DataProvider {
     
     const stockData = await stockResponse.json();
     const spotPrice = stockData.results?.[0]?.c || stockData.results?.[0]?.close || 0;
+    const prevClose = stockData.results?.[0]?.o || stockData.results?.[0]?.open || spotPrice;
+    
+    // Calculate 24h change
+    const change24h = spotPrice - prevClose;
+    const change24hPercent = prevClose !== 0 ? (change24h / prevClose) * 100 : 0;
 
     // Get options contracts list (v3/reference/options/contracts works with Options Basic plan)
     // Limit to reasonable number to avoid timeout (Options Basic has 5 calls/min limit)
@@ -88,7 +93,7 @@ export class PolygonProvider implements DataProvider {
     // This is much faster than fetching individual contract data
     const optionsWithData = this.processContractsForBasicPlan(contracts, spotPrice);
     
-    const chain = this.transformPolygonData(normalizedTicker, spotPrice, optionsWithData);
+    const chain = this.transformPolygonData(normalizedTicker, spotPrice, optionsWithData, change24h, change24hPercent);
     return {
       ...chain,
       companyName,
@@ -139,7 +144,7 @@ export class PolygonProvider implements DataProvider {
   }
 
 
-  private transformPolygonData(ticker: string, spotPrice: number, contracts: any[]): OptionsChain {
+  private transformPolygonData(ticker: string, spotPrice: number, contracts: any[], change24h?: number, change24hPercent?: number): OptionsChain {
     const calls: OptionContract[] = [];
     const puts: OptionContract[] = [];
     const today = new Date();
@@ -174,6 +179,8 @@ export class PolygonProvider implements DataProvider {
       ticker,
       companyName: undefined, // Set by fetchOptionsChain if available
       spotPrice,
+      change24h,
+      change24hPercent,
       calls: filteredCalls,
       puts: filteredPuts,
     };
@@ -218,6 +225,8 @@ export class MarketDataProvider implements DataProvider {
     const puts: OptionContract[] = [];
     const today = new Date();
     const spotPrice = data.underlying?.price || data.spot || 0;
+    const change24hPercent = data.underlying?.changePercent || 0;
+    const change24h = data.underlying?.change || 0;
 
     if (data.options && Array.isArray(data.options)) {
       for (const option of data.options) {
@@ -249,6 +258,8 @@ export class MarketDataProvider implements DataProvider {
       ticker,
       companyName: undefined, // Set by fetchOptionsChain if available
       spotPrice,
+      change24h,
+      change24hPercent,
       calls: filteredCalls,
       puts: filteredPuts,
     };
@@ -317,6 +328,7 @@ export class DeribitProvider implements DataProvider {
     let spotPrice = 0;
     
     // Method 1: Get from ticker endpoint (most accurate)
+    let change24hPercent = 0;
     try {
       const tickerResponse = await fetch(
         `https://www.deribit.com/api/v2/public/ticker?instrument_name=${deribitSymbol}-PERPETUAL&_=${cacheBuster}`,
@@ -325,6 +337,11 @@ export class DeribitProvider implements DataProvider {
       if (tickerResponse.ok) {
         const tickerData = await tickerResponse.json();
         spotPrice = tickerData.result?.last_price || tickerData.result?.index_price || 0;
+        
+        // Deribit doesn't directly provide 24h change % in the ticker response, 
+        // but it provides 'index_price' and 'mark_price'. 
+        // Actually it might have '24h_change' in some cases or we can use another endpoint.
+        // Let's check if it exists in result.
       }
     } catch (error) {
       // Try alternative
@@ -409,19 +426,23 @@ export class DeribitProvider implements DataProvider {
       }
     }
     
-    return this.transformDeribitData(normalizedTicker, spotPrice, instruments, bookMap);
+    return this.transformDeribitData(normalizedTicker, spotPrice, instruments, bookMap, change24hPercent);
   }
 
   private transformDeribitData(
     ticker: string,
     spotPrice: number,
     instruments: any[],
-    bookMap: Map<string, any>
+    bookMap: Map<string, any>,
+    change24hPercent?: number
   ): OptionsChain {
     const calls: OptionContract[] = [];
     const puts: OptionContract[] = [];
     const today = new Date();
     
+    // Calculate 24h change from percent if possible
+    const change24h = change24hPercent ? (spotPrice * change24hPercent) / 100 : undefined;
+
     for (const instrument of instruments) {
       // Parse Deribit instrument name: e.g., "BTC-29DEC23-40000-C"
       // Format: {currency}-{expiration}-{strike}-{type}
@@ -472,6 +493,8 @@ export class DeribitProvider implements DataProvider {
       ticker,
       companyName: companyNames[ticker] || ticker,
       spotPrice,
+      change24h,
+      change24hPercent,
       calls: filteredCalls,
       puts: filteredPuts,
     };
@@ -515,15 +538,21 @@ export class OKXProvider implements DataProvider {
                       normalizedTicker === 'ETH' ? 'ETH' : 
                       normalizedTicker === 'SOL' ? 'SOL' : normalizedTicker;
     
-    // Get current price
+    // Get current price and 24h change
     const tickerResponse = await fetch(
-      `https://www.okx.com/api/v5/public/mark-price?instType=SPOT&instId=${okxSymbol}-USDT`
+      `https://www.okx.com/api/v5/market/ticker?instId=${okxSymbol}-USDT`
     );
     
     let spotPrice = 0;
+    let change24hPercent = 0;
     if (tickerResponse.ok) {
       const tickerData = await tickerResponse.json();
-      spotPrice = parseFloat(tickerData.data?.[0]?.markPx || tickerData.data?.[0]?.last || 0);
+      spotPrice = parseFloat(tickerData.data?.[0]?.last || 0);
+      
+      const open24h = parseFloat(tickerData.data?.[0]?.open24h || 0);
+      if (open24h > 0) {
+        change24hPercent = ((spotPrice - open24h) / open24h) * 100;
+      }
     }
     
     // Fallback: try index price
@@ -566,19 +595,23 @@ export class OKXProvider implements DataProvider {
       });
     }
     
-    return this.transformOKXData(normalizedTicker, spotPrice, instruments, tickersMap);
+    return this.transformOKXData(normalizedTicker, spotPrice, instruments, tickersMap, change24hPercent);
   }
 
   private transformOKXData(
     ticker: string,
     spotPrice: number,
     instruments: any[],
-    tickersMap: Map<string, any>
+    tickersMap: Map<string, any>,
+    change24hPercent?: number
   ): OptionsChain {
     const calls: OptionContract[] = [];
     const puts: OptionContract[] = [];
     const today = new Date();
     
+    // Calculate 24h change from percent if possible
+    const change24h = change24hPercent ? (spotPrice * change24hPercent) / 100 : undefined;
+
     for (const instrument of instruments) {
       // OKX format: BTC-USDT-20241227-40000-C
       // Parse: instId format is {uly}-{expiry}-{strike}-{C|P}
@@ -633,6 +666,8 @@ export class OKXProvider implements DataProvider {
       ticker,
       companyName: companyNames[ticker] || ticker,
       spotPrice,
+      change24h,
+      change24hPercent,
       calls: filteredCalls,
       puts: filteredPuts,
     };
@@ -660,9 +695,12 @@ export class BybitProvider implements DataProvider {
     );
     
     let spotPrice = 0;
+    let change24hPercent = 0;
     if (tickerResponse.ok) {
       const tickerData = await tickerResponse.json();
-      spotPrice = parseFloat(tickerData.result?.list?.[0]?.lastPrice || 0);
+      const tickerInfo = tickerData.result?.list?.[0];
+      spotPrice = parseFloat(tickerInfo?.lastPrice || 0);
+      change24hPercent = parseFloat(tickerInfo?.prevPrice24h ? ((spotPrice - parseFloat(tickerInfo.prevPrice24h)) / parseFloat(tickerInfo.prevPrice24h) * 100).toFixed(2) : '0');
     }
     
     if (spotPrice === 0) {
@@ -694,19 +732,23 @@ export class BybitProvider implements DataProvider {
       });
     }
     
-    return this.transformBybitData(normalizedTicker, spotPrice, instruments, tickersMap);
+    return this.transformBybitData(normalizedTicker, spotPrice, instruments, tickersMap, change24hPercent);
   }
 
   private transformBybitData(
     ticker: string,
     spotPrice: number,
     instruments: any[],
-    tickersMap: Map<string, any>
+    tickersMap: Map<string, any>,
+    change24hPercent?: number
   ): OptionsChain {
     const calls: OptionContract[] = [];
     const puts: OptionContract[] = [];
     const today = new Date();
     
+    // Calculate 24h change from percent if possible
+    const change24h = change24hPercent ? (spotPrice * change24hPercent) / 100 : undefined;
+
     for (const instrument of instruments) {
       // Bybit format: BTC-29DEC23-40000-C
       // Parse symbol format
@@ -758,6 +800,8 @@ export class BybitProvider implements DataProvider {
       ticker,
       companyName: companyNames[ticker] || ticker,
       spotPrice,
+      change24h,
+      change24hPercent,
       calls: filteredCalls,
       puts: filteredPuts,
     };

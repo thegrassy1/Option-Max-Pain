@@ -258,7 +258,19 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Current Price</h3>
-          <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">${optionsChain.spotPrice.toFixed(2)}</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">${optionsChain.spotPrice.toFixed(2)}</p>
+            {optionsChain.change24hPercent !== undefined && (
+              <span className={`text-sm font-semibold ${optionsChain.change24hPercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {optionsChain.change24hPercent >= 0 ? '+' : ''}{optionsChain.change24hPercent.toFixed(2)}%
+              </span>
+            )}
+          </div>
+          {optionsChain.change24h !== undefined && (
+            <p className={`text-xs mt-1 ${optionsChain.change24h >= 0 ? 'text-green-600/70' : 'text-red-600/70'}`}>
+              {optionsChain.change24h >= 0 ? '+' : ''}${Math.abs(optionsChain.change24h).toFixed(2)} (24h)
+            </p>
+          )}
         </div>
         {maxPain && (() => {
           const expirationDate = new Date();
@@ -319,6 +331,79 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
           </p>
         </div>
       </div>
+
+      {/* Max Pain Sentiment Gauge */}
+      {maxPain && (
+        <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1 space-y-2 text-center md:text-left">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Max Pain Sentiment</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Measures how far the price is from the Max Pain strike. The market often "pulls" the price toward this level as expiration approaches.
+              </p>
+              <div className="flex items-center gap-4 justify-center md:justify-start mt-2">
+                <div className="text-center">
+                  <p className="text-[10px] uppercase text-gray-400 font-bold">Current Price</p>
+                  <p className="font-mono text-sm">${optionsChain.spotPrice.toFixed(2)}</p>
+                </div>
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+                <div className="text-center">
+                  <p className="text-[10px] uppercase text-gray-400 font-bold">Max Pain</p>
+                  <p className="font-mono text-sm text-purple-500">${maxPain.maxPainStrike.toFixed(2)}</p>
+                </div>
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+                <div className="text-center">
+                  <p className="text-[10px] uppercase text-gray-400 font-bold">Distance</p>
+                  <p className={`font-mono text-sm ${Math.abs(optionsChain.spotPrice - maxPain.maxPainStrike) / optionsChain.spotPrice < 0.02 ? 'text-green-500' : 'text-orange-500'}`}>
+                    {((maxPain.maxPainStrike - optionsChain.spotPrice) / optionsChain.spotPrice * 100).toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative w-64 h-32 overflow-hidden">
+              {/* Gauge Background (Half-circle) */}
+              <div className="absolute top-0 left-0 w-64 h-64 border-[20px] border-gray-100 dark:border-gray-700 rounded-full" />
+              
+              {/* Gauge Colors */}
+              <div className="absolute top-0 left-0 w-64 h-64 border-[20px] border-transparent rounded-full" 
+                   style={{
+                     borderLeftColor: '#ef4444', // Red (Extreme Bearish)
+                     borderTopColor: '#eab308', // Yellow (Neutral)
+                     transform: 'rotate(45deg)',
+                     zIndex: 1
+                   }} />
+              <div className="absolute top-0 left-0 w-64 h-64 border-[20px] border-transparent rounded-full" 
+                   style={{
+                     borderRightColor: '#10b981', // Green (Extreme Bullish)
+                     transform: 'rotate(-45deg)',
+                     zIndex: 1
+                   }} />
+
+              {/* Needle */}
+              {(() => {
+                const diffPercent = ((maxPain.maxPainStrike - optionsChain.spotPrice) / optionsChain.spotPrice) * 100;
+                // Clamp diff between -10% and +10% for the gauge
+                const clampedDiff = Math.max(-10, Math.min(10, diffPercent));
+                // Map -10% -> 10% to 0 -> 180 degrees
+                const rotation = (clampedDiff + 10) * 9; 
+                
+                return (
+                  <div className="absolute bottom-0 left-1/2 w-1 h-24 bg-gray-800 dark:bg-white origin-bottom -translate-x-1/2 transition-transform duration-1000 ease-out"
+                       style={{ transform: `translateX(-50%) rotate(${rotation - 90}deg)`, zIndex: 10 }}>
+                    <div className="w-3 h-3 bg-gray-800 dark:bg-white rounded-full -translate-x-1 translate-y-20" />
+                  </div>
+                );
+              })()}
+
+              {/* Gauge Labels */}
+              <div className="absolute bottom-2 left-4 text-[10px] font-bold text-red-500">BEARISH</div>
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400">NEUTRAL</div>
+              <div className="absolute bottom-2 right-4 text-[10px] font-bold text-green-500">BULLISH</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 p-3 md:p-6 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
