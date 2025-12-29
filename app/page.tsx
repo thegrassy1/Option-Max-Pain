@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { calculateDeltaManagement, OptionData, calculateNextExpirationMaxPain, calculateMaxPainForAllExpirations } from '@/lib/delta-calculator';
 import DeltaVisualization from '@/components/DeltaVisualization';
 import { OptionsChain } from '@/lib/options-api';
+import { AnalysisSkeleton } from '@/components/Skeleton';
 
 export default function Home() {
   const [ticker, setTicker] = useState('');
@@ -332,23 +333,45 @@ export default function Home() {
               </div>
             </form>
 
-            {favorites.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Favorites:</span>
-                {favorites.map(fav => (
-                  <button
-                    key={fav}
-                    onClick={() => {
-                      setTicker(fav);
-                      fetchData(fav, false);
-                    }}
-                    className="px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full text-xs font-medium hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors border border-primary-200 dark:border-primary-800"
-                  >
-                    {fav}
-                  </button>
-                ))}
+            <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4 border-t border-gray-100 dark:border-gray-700 pt-6">
+              <div className="flex-1">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-[10px] md:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🔥 Popular Right Now:</span>
+                  {['BTC', 'NVDA', 'TSLA', 'AAPL', 'SOL'].map(fav => (
+                    <button
+                      key={fav}
+                      onClick={() => {
+                        setTicker(fav);
+                        fetchData(fav, false);
+                      }}
+                      className="px-2.5 py-1 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-full text-[10px] md:text-xs font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600"
+                    >
+                      {fav}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+
+              {favorites.length > 0 && (
+                <div className="flex-1 border-t sm:border-t-0 sm:border-l border-gray-100 dark:border-gray-700 pt-4 sm:pt-0 sm:pl-4">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">⭐ Your Favorites:</span>
+                    {favorites.map(fav => (
+                      <button
+                        key={fav}
+                        onClick={() => {
+                          setTicker(fav);
+                          fetchData(fav, false);
+                        }}
+                        className="px-2.5 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full text-[10px] md:text-xs font-medium hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors border border-primary-200 dark:border-primary-800"
+                      >
+                        {fav}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {error && (
               <div className={`mt-4 p-4 rounded-lg border ${
@@ -377,7 +400,11 @@ export default function Home() {
           </div>
 
           {/* Results */}
-          {optionsChain && deltaData.length > 0 && (
+          {loading ? (
+            <div className="mt-8">
+              <AnalysisSkeleton />
+            </div>
+          ) : optionsChain && deltaData.length > 0 ? (
             <div className="mt-8">
               <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex-1">
@@ -429,10 +456,10 @@ export default function Home() {
               </div>
               <DeltaVisualization optionsChain={optionsChain} deltaData={deltaData} />
             </div>
-          )}
+          ) : null}
 
           {/* Info Section */}
-          {!optionsChain && (
+          {!optionsChain && !loading && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 border border-gray-200 dark:border-gray-700">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">How It Works</h3>
               <div className="grid md:grid-cols-2 gap-6">

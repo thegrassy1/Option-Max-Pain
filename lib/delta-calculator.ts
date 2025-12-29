@@ -13,10 +13,13 @@ export interface OptionData {
 export interface DeltaData {
   strike: number;
   delta: number;
+  gamma: number;
   totalDelta: number; // delta * open interest
+  totalGamma: number; // gamma * open interest
   openInterest: number;
   type: 'call' | 'put';
   hedgingShares: number; // shares needed to hedge (positive = buy, negative = sell)
+  gammaExposure: number; // gamma exposure (GEX)
 }
 
 /**
@@ -37,6 +40,13 @@ function normCDF(x: number): number {
   const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
 
   return 0.5 * (1.0 + sign * y);
+}
+
+/**
+ * Calculate standard normal probability density function
+ */
+function normPDF(x: number): number {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 }
 
 /**
@@ -62,6 +72,26 @@ export function calculateDelta(
   } else {
     return -normCDF(-d1);
   }
+}
+
+/**
+ * Calculate Black-Scholes gamma for an option
+ */
+export function calculateGamma(
+  spotPrice: number,
+  strike: number,
+  timeToExpiry: number, // in years
+  volatility: number, // annualized volatility (e.g., 0.30 for 30%)
+  riskFreeRate: number = 0.05 // annual risk-free rate
+): number {
+  if (timeToExpiry <= 0 || spotPrice <= 0 || volatility <= 0) {
+    return 0;
+  }
+
+  const d1 = (Math.log(spotPrice / strike) + (riskFreeRate + 0.5 * volatility * volatility) * timeToExpiry) /
+    (volatility * Math.sqrt(timeToExpiry));
+
+  return normPDF(d1) / (spotPrice * volatility * Math.sqrt(timeToExpiry));
 }
 
 /**
@@ -107,39 +137,60 @@ export function calculateDeltaManagement(
       option.type
     );
 
+    const gamma = calculateGamma(
+      spotPrice,
+      option.strike,
+      timeToExpiry,
+      volatility,
+      riskFreeRate
+    );
+
     // Apply multiplier to account for:
     // 1. Long positions (don't need hedging)
     // 2. Covered calls (already hedged with stock ownership)
     // 3. Other non-market-maker positions
     const hedgeMultiplier = option.type === 'call' ? callHedgeMultiplier : coveredCallMultiplier;
     
-    // Total delta exposure = delta * open interest * 100 * multiplier
-    // Multiplier accounts for covered calls and long positions
+    // Total delta exposure = delta * option.openInterest * 100 * hedgeMultiplier
     const totalDelta = delta * option.openInterest * 100 * hedgeMultiplier;
+    
+    // Total gamma exposure = gamma * option.openInterest * 100 * hedgeMultiplier
+    const totalGamma = gamma * option.openInterest * 100 * hedgeMultiplier;
     
     // Hedging shares needed (negative means market makers need to sell)
     const hedgingShares = -totalDelta;
 
+    // Gamma exposure (GEX)
+    // For market makers: Short Calls = -Gamma, Short Puts = +Gamma
+    // Most retail buys calls/puts, so MMs are usually short gamma.
+    const gammaExposure = option.type === 'call' ? -totalGamma : totalGamma;
+
     return {
       strike: option.strike,
       delta,
+      gamma,
       totalDelta,
+      totalGamma,
       openInterest: option.openInterest,
       type: option.type,
       hedgingShares,
+      gammaExposure,
     };
   });
 }
 
 /**
- * Aggregate delta by strike (combining calls and puts)
+ * Aggregate delta and gamma by strike
  */
-export function aggregateDeltaByStrike(deltaData: DeltaData[]): Map<number, number> {
-  const aggregated = new Map<number, number>();
+export function aggregateDeltaByStrike(deltaData: DeltaData[]): Map<number, { delta: number; gamma: number }> {
+  const aggregated = new Map<number, { delta: number; gamma: number }>();
   
   deltaData.forEach(data => {
-    const current = aggregated.get(data.strike) || 0;
-    aggregated.set(data.strike, current + data.hedgingShares);
+    const current = aggregated.get(data.strike) || { delta: 0, gamma: 0 };
+    aggregated.set(data.strike, {
+      delta: current.delta + data.hedgingShares,
+      gamma: current.gamma + data.gammaExposure
+    });
   });
   
   return aggregated;

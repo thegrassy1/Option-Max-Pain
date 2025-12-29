@@ -24,6 +24,7 @@ interface DeltaVisualizationProps {
 export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVisualizationProps) {
   const allMaxPain = (optionsChain as any).allMaxPain as MaxPainResult[] | undefined;
   const [selectedExpiration, setSelectedExpiration] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'delta' | 'gamma'>('delta');
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   
   useEffect(() => {
@@ -58,11 +59,14 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
     
     // Convert to array and sort by strike
     const data = Array.from(aggregated.entries())
-      .map(([strike, hedgingShares]) => ({
+      .map(([strike, values]) => ({
         strike,
-        hedgingShares: Math.round(hedgingShares),
-        buyPressure: hedgingShares > 0 ? hedgingShares : 0,
-        sellPressure: hedgingShares < 0 ? Math.abs(hedgingShares) : 0,
+        hedgingShares: Math.round(values.delta),
+        gammaExposure: Math.round(values.gamma),
+        buyPressure: values.delta > 0 ? values.delta : 0,
+        sellPressure: values.delta < 0 ? Math.abs(values.delta) : 0,
+        posGamma: values.gamma > 0 ? values.gamma : 0,
+        negGamma: values.gamma < 0 ? Math.abs(values.gamma) : 0,
       }))
       .sort((a, b) => a.strike - b.strike);
 
@@ -160,20 +164,41 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const symbol = optionsChain.ticker;
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 md:p-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
-          <p className="font-semibold text-sm md:text-base dark:text-white">Strike: ${data.strike}</p>
-          <p className="text-green-600 dark:text-green-400 text-xs md:text-sm">
-            Buy Pressure: {data.buyPressure.toLocaleString()} {symbol}
-          </p>
-          <p className="text-red-600 dark:text-red-400 text-xs md:text-sm">
-            Sell Pressure: {data.sellPressure.toLocaleString()} {symbol}
-          </p>
-          <p className="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs mt-1">
-            Net: {data.hedgingShares.toLocaleString()} {symbol}
-          </p>
-        </div>
-      );
+      
+      if (viewMode === 'delta') {
+        return (
+          <div className="bg-white dark:bg-gray-800 p-3 md:p-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+            <p className="font-semibold text-sm md:text-base dark:text-white">Strike: ${data.strike}</p>
+            <p className="text-green-600 dark:text-green-400 text-xs md:text-sm">
+              Buy Pressure: {data.buyPressure.toLocaleString()} {symbol}
+            </p>
+            <p className="text-red-600 dark:text-red-400 text-xs md:text-sm">
+              Sell Pressure: {data.sellPressure.toLocaleString()} {symbol}
+            </p>
+            <p className="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs mt-1">
+              Net: {data.hedgingShares.toLocaleString()} {symbol}
+            </p>
+          </div>
+        );
+      } else {
+        return (
+          <div className="bg-white dark:bg-gray-800 p-3 md:p-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+            <p className="font-semibold text-sm md:text-base dark:text-white">Strike: ${data.strike}</p>
+            <p className="text-blue-600 dark:text-blue-400 text-xs md:text-sm">
+              Positive GEX: {data.posGamma.toLocaleString()}
+            </p>
+            <p className="text-orange-600 dark:text-orange-400 text-xs md:text-sm">
+              Negative GEX: {Math.abs(data.negGamma).toLocaleString()}
+            </p>
+            <p className="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs mt-1 border-t border-gray-100 dark:border-gray-700 pt-1">
+              Total GEX: {data.gammaExposure.toLocaleString()}
+            </p>
+            <p className="text-[9px] text-gray-500 dark:text-gray-500 mt-1 leading-tight">
+              GEX = Gamma * OI * 100. Positive GEX stabilizes markets, negative GEX increases volatility.
+            </p>
+          </div>
+        );
+      }
     }
     return null;
   };
@@ -246,7 +271,34 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-3 md:p-6 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg md:text-xl font-bold mb-2 dark:text-white">Delta Hedging Requirements</h2>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+          <h2 className="text-lg md:text-xl font-bold dark:text-white">
+            {viewMode === 'delta' ? 'Delta Hedging Requirements' : 'Gamma Exposure (GEX)'}
+          </h2>
+          
+          <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg self-start">
+            <button
+              onClick={() => setViewMode('delta')}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                viewMode === 'delta'
+                  ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              Delta View
+            </button>
+            <button
+              onClick={() => setViewMode('gamma')}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                viewMode === 'gamma'
+                  ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              Gamma View (GEX)
+            </button>
+          </div>
+        </div>
         
         <div className="mb-6 p-3 md:p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 items-center">
@@ -346,8 +398,17 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
                   }}
                 />
               )}
-              <Bar dataKey="buyPressure" fill="#10b981" name="Buy Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
-              <Bar dataKey="sellPressure" fill="#ef4444" name="Sell Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
+              {viewMode === 'delta' ? (
+                <>
+                  <Bar dataKey="buyPressure" fill="#10b981" name="Buy Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
+                  <Bar dataKey="sellPressure" fill="#ef4444" name="Sell Pressure" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
+                </>
+              ) : (
+                <>
+                  <Bar dataKey="posGamma" fill="#3b82f6" name="Positive GEX" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
+                  <Bar dataKey="negGamma" fill="#f97316" name="Negative GEX" radius={[2, 2, 0, 0]} barSize={isMobile ? 8 : 16} />
+                </>
+              )}
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -356,8 +417,17 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
       <div className="bg-blue-50 dark:bg-blue-900/20 p-4 md:p-6 rounded-lg border border-blue-100 dark:border-blue-800">
         <h3 className="text-base md:text-lg font-semibold text-blue-900 dark:text-blue-300 mb-2">How to Read</h3>
         <ul className="space-y-1.5 text-xs md:text-sm text-blue-800 dark:text-blue-400">
-          <li><strong>Green:</strong> Buy pressure if price rallies.</li>
-          <li><strong>Red:</strong> Sell pressure if price drops.</li>
+          {viewMode === 'delta' ? (
+            <>
+              <li><strong>Green Bars:</strong> Buy pressure if price rallies (Market Makers buying stock).</li>
+              <li><strong>Red Bars:</strong> Sell pressure if price drops (Market Makers selling stock).</li>
+            </>
+          ) : (
+            <>
+              <li><strong>Blue Bars:</strong> Positive Gamma Exposure (GEX). Stabilizes market; acts like a "cushion" as price moves.</li>
+              <li><strong>Orange Bars:</strong> Negative Gamma Exposure (GEX). Increases volatility; acts like "fuel" as price moves.</li>
+            </>
+          )}
           <li><strong>Blue Line:</strong> Current Price.</li>
           <li><strong>Purple Line:</strong> Max Pain Strike.</li>
         </ul>
