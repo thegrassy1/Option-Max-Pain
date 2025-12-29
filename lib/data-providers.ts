@@ -134,10 +134,12 @@ export class PolygonProvider implements DataProvider {
       
       // Base estimate (Options Basic doesn't provide real OI, so we estimate)
       const estimatedOI = Math.floor(1000 * strikeFactor * timeFactor * (0.5 + Math.random() * 0.5));
+      const estimatedVolume = Math.floor(estimatedOI * 0.2 * (0.5 + Math.random()));
       
       return {
         ...contract,
         open_interest: estimatedOI,
+        volume: estimatedVolume,
         expiration: daysToExpiration,
       };
     }).filter(c => c !== null);
@@ -172,7 +174,7 @@ export class PolygonProvider implements DataProvider {
         const optionContract: OptionContract = {
           strike: contract.strike_price,
           openInterest: contract.open_interest || 0,
-          volume: contract.volume || 0,
+          volume: contract.volume || contract.vol || 0,
           expiration: daysToExpiration,
           type: contract.contract_type === 'call' ? 'call' : 'put',
         };

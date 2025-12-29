@@ -61,7 +61,7 @@ export function generateMockData(ticker: string): OptionsChain {
     'TSLA': 420,
     'BTC': 95000,
     'AAPL': 235,
-    'NVDA': 135,
+    'NVDA': 190.53, // Match user's observation
     'SPY': 600,
     'SOL': 240,
     'ETH': 3800,
