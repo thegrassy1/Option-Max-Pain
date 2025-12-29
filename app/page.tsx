@@ -230,7 +230,7 @@ export default function Home() {
       }
       
       // Calculate max pain for all expirations
-      const allMaxPain = calculateMaxPainForAllExpirations(allOptions);
+      const allMaxPain = calculateMaxPainForAllExpirations(allOptions, chain.spotPrice);
       if (allMaxPain.length > 0) {
         // Store all max pain results and default to next expiration
         (chain as any).allMaxPain = allMaxPain;

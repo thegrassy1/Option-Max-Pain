@@ -64,9 +64,12 @@ export class PolygonProvider implements DataProvider {
     const change24hPercent = prevClose !== 0 ? (change24h / prevClose) * 100 : 0;
 
     // Get options contracts list (v3/reference/options/contracts works with Options Basic plan)
-    // Limit to reasonable number to avoid timeout (Options Basic has 5 calls/min limit)
+    // Target strikes near ATM to avoid getting only deep ITM/OTM contracts due to pagination limits
+    const minStrike = Math.floor(spotPrice * 0.6);
+    const maxStrike = Math.ceil(spotPrice * 1.4);
+    
     const contractsResponse = await fetch(
-      `https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${normalizedTicker}&limit=500&apiKey=${this.apiKey}`
+      `https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${normalizedTicker}&strike_price.gte=${minStrike}&strike_price.lte=${maxStrike}&limit=1000&apiKey=${this.apiKey}`
     );
     
     if (!contractsResponse.ok) {

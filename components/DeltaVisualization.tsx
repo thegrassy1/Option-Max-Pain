@@ -268,7 +268,7 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
           </div>
           {optionsChain.change24h !== undefined && (
             <p className={`text-xs mt-1 ${optionsChain.change24h >= 0 ? 'text-green-600/70' : 'text-red-600/70'}`}>
-              {optionsChain.change24h >= 0 ? '+' : ''}${Math.abs(optionsChain.change24h).toFixed(2)} (24h)
+              {optionsChain.change24h >= 0 ? '+' : '-'}${Math.abs(optionsChain.change24h).toFixed(2)} (24h)
             </p>
           )}
         </div>
@@ -283,9 +283,21 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
           const hasMultipleExpirations = allMaxPain && allMaxPain.length > 1;
           
           return (
-            <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border-l-4 border-purple-500 border-t border-r border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Max Pain Strike</h3>
-              <p className="text-xl md:text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">${maxPain.maxPainStrike.toFixed(2)}</p>
+            <div className={`bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md border-l-4 ${maxPain.isReliable === false ? 'border-yellow-500' : 'border-purple-500'} border-t border-r border-b border-gray-200 dark:border-gray-700`}>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Max Pain Strike</h3>
+                {maxPain.isReliable === false && (
+                  <span className="group relative">
+                    <span className="text-yellow-500 cursor-help">⚠️</span>
+                    <span className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      Unreliable data: Max Pain strike is too far from current price or based on too few strikes.
+                    </span>
+                  </span>
+                )}
+              </div>
+              <p className={`text-xl md:text-2xl font-bold ${maxPain.isReliable === false ? 'text-yellow-600 dark:text-yellow-400' : 'text-purple-600 dark:text-purple-400'} mb-2`}>
+                ${maxPain.maxPainStrike.toFixed(2)}
+              </p>
               {hasMultipleExpirations && allMaxPain ? (
                 <div className="mb-2">
                   <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Select Expiration:</label>

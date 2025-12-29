@@ -211,7 +211,8 @@ export interface MaxPainResult {
 
 export function calculateMaxPain(
   options: OptionData[],
-  expirationDays: number
+  expirationDays: number,
+  spotPrice?: number
 ): MaxPainResult | null {
   // Filter options for the specific expiration
   const expirationOptions = options.filter(opt => opt.expiration === expirationDays);
@@ -270,7 +271,18 @@ export function calculateMaxPain(
 
   // Validate: If we only have a few strikes or very low open interest, the result might be unreliable
   const totalOI = Array.from(optionsByStrike.values()).reduce((sum, oi) => sum + oi.calls + oi.puts, 0);
-  const hasEnoughData = totalOI > 0 && strikes.length >= 3;
+  
+  // A result is reliable if:
+  // 1. We have enough strikes (at least 5)
+  // 2. We have some open interest
+  // 3. If spot price is provided, the max pain strike isn't ridiculously far away (more than 50%)
+  let isReliable = totalOI > 0 && strikes.length >= 5;
+  if (isReliable && spotPrice && spotPrice > 0) {
+    const distancePercent = Math.abs(maxPainStrike - spotPrice) / spotPrice;
+    if (distancePercent > 0.5) {
+      isReliable = false;
+    }
+  }
 
   return {
     maxPainStrike,
@@ -278,28 +290,28 @@ export function calculateMaxPain(
     expirationDays,
     totalOpenInterest: totalOI,
     strikeCount: strikes.length,
-    isReliable: hasEnoughData,
+    isReliable,
   };
 }
 
 /**
  * Find the next expiration date and calculate max pain for it
  */
-export function calculateNextExpirationMaxPain(options: OptionData[]): MaxPainResult | null {
+export function calculateNextExpirationMaxPain(options: OptionData[], spotPrice?: number): MaxPainResult | null {
   if (options.length === 0) return null;
 
   // Find the nearest expiration date
   const minExpiration = Math.min(...options.map(opt => opt.expiration));
   
   // Calculate max pain for the nearest expiration
-  return calculateMaxPain(options, minExpiration);
+  return calculateMaxPain(options, minExpiration, spotPrice);
 }
 
 /**
  * Calculate max pain for the next 2 expiration dates (most relevant)
  * Shows all monthly/quarterly expirations within the next 2 months
  */
-export function calculateMaxPainForAllExpirations(options: OptionData[]): MaxPainResult[] {
+export function calculateMaxPainForAllExpirations(options: OptionData[], spotPrice?: number): MaxPainResult[] {
   if (options.length === 0) return [];
 
   // Get all unique expiration dates, sorted
@@ -321,7 +333,7 @@ export function calculateMaxPainForAllExpirations(options: OptionData[]): MaxPai
   const results: MaxPainResult[] = [];
   
   for (const expiration of relevantExpirations) {
-    const maxPain = calculateMaxPain(options, expiration);
+    const maxPain = calculateMaxPain(options, expiration, spotPrice);
     if (maxPain) {
       results.push(maxPain);
     }
