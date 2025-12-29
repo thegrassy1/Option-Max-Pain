@@ -174,14 +174,16 @@ export function calculateDeltaManagement(
 /**
  * Aggregate delta and gamma by strike
  */
-export function aggregateDeltaByStrike(deltaData: DeltaData[]): Map<number, { delta: number; gamma: number }> {
-  const aggregated = new Map<number, { delta: number; gamma: number }>();
+export function aggregateDeltaByStrike(deltaData: DeltaData[]): Map<number, { delta: number; gamma: number; buyPressure: number; sellPressure: number }> {
+  const aggregated = new Map<number, { delta: number; gamma: number; buyPressure: number; sellPressure: number }>();
   
   deltaData.forEach(data => {
-    const current = aggregated.get(data.strike) || { delta: 0, gamma: 0 };
+    const current = aggregated.get(data.strike) || { delta: 0, gamma: 0, buyPressure: 0, sellPressure: 0 };
     aggregated.set(data.strike, {
       delta: current.delta + data.hedgingShares,
-      gamma: current.gamma + data.gammaExposure
+      gamma: current.gamma + data.gammaExposure,
+      buyPressure: current.buyPressure + (data.hedgingShares > 0 ? data.hedgingShares : 0),
+      sellPressure: current.sellPressure + (data.hedgingShares < 0 ? Math.abs(data.hedgingShares) : 0)
     });
   });
   

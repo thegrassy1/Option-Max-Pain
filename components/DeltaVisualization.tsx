@@ -68,8 +68,8 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
           strike,
           hedgingShares: Math.round(values.delta),
           gammaExposure: Math.round(values.gamma),
-          buyPressure: values.delta > 0 ? values.delta : 0,
-          sellPressure: values.delta < 0 ? Math.abs(values.delta) : 0,
+          buyPressure: values.buyPressure,
+          sellPressure: values.sellPressure,
           posGamma: values.gamma > 0 ? values.gamma : 0,
           negGamma: values.gamma < 0 ? Math.abs(values.gamma) : 0,
           // Extra data for tooltips
@@ -275,11 +275,11 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
             {(() => {
               const totalCalls = deltaData.filter(d => d.type === 'call').reduce((sum, d) => sum + d.openInterest, 0);
               const totalPuts = deltaData.filter(d => d.type === 'put').reduce((sum, d) => sum + d.openInterest, 0);
-              const pcr = totalPuts > 0 ? totalPuts / totalCalls : 0;
+              const pcr = totalCalls > 0 ? totalPuts / totalCalls : 0;
               return (
                 <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700/50">
                   <span>Put/Call Ratio:</span>
-                  <span className={`font-bold ${pcr > 1 ? 'text-red-500' : pcr < 0.7 ? 'text-green-500' : 'text-gray-600'}`}>
+                  <span className={`font-bold ${pcr > 1.1 ? 'text-red-500' : pcr < 0.8 ? 'text-green-500' : 'text-gray-600'}`}>
                     {pcr.toFixed(2)}
                   </span>
                 </div>

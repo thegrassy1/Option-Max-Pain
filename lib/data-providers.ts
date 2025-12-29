@@ -172,6 +172,7 @@ export class PolygonProvider implements DataProvider {
         const optionContract: OptionContract = {
           strike: contract.strike_price,
           openInterest: contract.open_interest || 0,
+          volume: contract.volume || 0,
           expiration: daysToExpiration,
           type: contract.contract_type === 'call' ? 'call' : 'put',
         };
@@ -251,6 +252,8 @@ export class MarketDataProvider implements DataProvider {
         const contract: OptionContract = {
           strike: option.strike,
           openInterest: option.openInterest || option.open_interest || 0,
+          volume: option.volume || 0,
+          impliedVolatility: option.impliedVolatility || option.iv || 0,
           expiration: daysToExpiration,
           type: option.type === 'call' ? 'call' : 'put',
         };
@@ -481,6 +484,8 @@ export class DeribitProvider implements DataProvider {
       const contract: OptionContract = {
         strike,
         openInterest,
+        volume: book?.volume || 0,
+        impliedVolatility: book?.ask_iv || book?.bid_iv || 0,
         expiration: daysToExpiration,
         type: type === 'C' ? 'call' : 'put',
       };
@@ -654,6 +659,8 @@ export class OKXProvider implements DataProvider {
       const contract: OptionContract = {
         strike,
         openInterest,
+        volume: parseInt(tickerData?.vol24h || instrument.vol24h || '0') || 0,
+        impliedVolatility: parseFloat(tickerData?.askIv || tickerData?.bidIv || '0') || 0,
         expiration: daysToExpiration,
         type: type === 'C' ? 'call' : 'put',
       };
@@ -788,6 +795,8 @@ export class BybitProvider implements DataProvider {
       const contract: OptionContract = {
         strike,
         openInterest,
+        volume: parseFloat(tickerData?.volume24h || instrument.volume24h || '0') || 0,
+        impliedVolatility: parseFloat(tickerData?.markIv || '0') || 0,
         expiration: daysToExpiration,
         type: type === 'C' ? 'call' : 'put',
       };
