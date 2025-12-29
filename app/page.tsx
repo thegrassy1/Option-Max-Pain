@@ -544,36 +544,26 @@ export default function Home() {
                     </button>
 
                     <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg ml-4">
-                      <div className="group relative">
-                        <button
-                          onClick={() => setUseVolume(false)}
-                          className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
-                            !useVolume
-                              ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
-                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                          }`}
-                        >
-                          OI
-                        </button>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                          Open Interest: Total existing contracts.
-                        </span>
-                      </div>
-                      <div className="group relative">
-                        <button
-                          onClick={() => setUseVolume(true)}
-                          className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
-                            useVolume
-                              ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
-                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                          }`}
-                        >
-                          VOL
-                        </button>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                          Volume: Today's traded contracts.
-                        </span>
-                      </div>
+                      <button
+                        onClick={() => setUseVolume(false)}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                          !useVolume
+                            ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        OI
+                      </button>
+                      <button
+                        onClick={() => setUseVolume(true)}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                          useVolume
+                            ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        VOL
+                      </button>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
