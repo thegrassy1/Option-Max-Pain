@@ -266,11 +266,32 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
               </span>
             )}
           </div>
-          {optionsChain.change24h !== undefined && (
-            <p className={`text-xs mt-1 ${optionsChain.change24h >= 0 ? 'text-green-600/70' : 'text-red-600/70'}`}>
-              {optionsChain.change24h >= 0 ? '+' : '-'}${Math.abs(optionsChain.change24h).toFixed(2)} (24h)
-            </p>
-          )}
+          <div className="mt-2 space-y-1">
+            {optionsChain.change24h !== undefined && (
+              <p className={`text-xs ${optionsChain.change24h >= 0 ? 'text-green-600/70' : 'text-red-600/70'}`}>
+                {optionsChain.change24h >= 0 ? '+' : '-'}${Math.abs(optionsChain.change24h).toFixed(2)} (24h)
+              </p>
+            )}
+            {(() => {
+              const totalCalls = deltaData.filter(d => d.type === 'call').reduce((sum, d) => sum + d.openInterest, 0);
+              const totalPuts = deltaData.filter(d => d.type === 'put').reduce((sum, d) => sum + d.openInterest, 0);
+              const pcr = totalPuts > 0 ? totalPuts / totalCalls : 0;
+              return (
+                <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700/50">
+                  <span>Put/Call Ratio:</span>
+                  <span className={`font-bold ${pcr > 1 ? 'text-red-500' : pcr < 0.7 ? 'text-green-500' : 'text-gray-600'}`}>
+                    {pcr.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })()}
+            {optionsChain.impliedVolatility !== undefined && (
+              <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
+                <span>Avg. IV:</span>
+                <span className="font-bold text-blue-500">{(optionsChain.impliedVolatility * 100).toFixed(1)}%</span>
+              </div>
+            )}
+          </div>
         </div>
         {maxPain && (() => {
           const expirationDate = new Date();
@@ -541,6 +562,20 @@ export default function DeltaVisualization({ optionsChain, deltaData }: DeltaVis
                     value: isMobile ? '' : 'Max Pain', 
                     position: 'top', 
                     fill: '#a855f7', 
+                    fontSize: 10 
+                  }}
+                />
+              )}
+              {(optionsChain as any).gammaFlip && (
+                <ReferenceLine
+                  x={(optionsChain as any).gammaFlip}
+                  stroke="#f59e0b"
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                  label={{ 
+                    value: isMobile ? '' : 'Gamma Flip', 
+                    position: 'bottom', 
+                    fill: '#f59e0b', 
                     fontSize: 10 
                   }}
                 />

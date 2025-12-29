@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { calculateDeltaManagement, OptionData, calculateNextExpirationMaxPain, calculateMaxPainForAllExpirations } from '@/lib/delta-calculator';
+import { 
+  calculateDeltaManagement, 
+  OptionData, 
+  calculateNextExpirationMaxPain, 
+  calculateMaxPainForAllExpirations,
+  calculateGammaFlip 
+} from '@/lib/delta-calculator';
 import DeltaVisualization from '@/components/DeltaVisualization';
 import { OptionsChain } from '@/lib/options-api';
 import { AnalysisSkeleton } from '@/components/Skeleton';
@@ -14,6 +20,7 @@ export default function Home() {
   const [deltaData, setDeltaData] = useState<any[]>([]);
   const [dataAge, setDataAge] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
+  const [useVolume, setUseVolume] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [sentiment, setSentiment] = useState<'neutral' | 'bullish' | 'bearish'>('neutral');
@@ -142,12 +149,16 @@ export default function Home() {
         ...chain.calls.map(c => ({
           strike: c.strike,
           openInterest: c.openInterest,
+          volume: c.volume,
+          impliedVolatility: c.impliedVolatility,
           type: 'call' as const,
           expiration: c.expiration,
         })),
         ...chain.puts.map(p => ({
           strike: p.strike,
           openInterest: p.openInterest,
+          volume: p.volume,
+          impliedVolatility: p.impliedVolatility,
           type: 'put' as const,
           expiration: p.expiration,
         })),
@@ -163,22 +174,29 @@ export default function Home() {
         return;
       }
 
+      // Calculate average IV
+      const validIVs = allOptions.filter(o => o.impliedVolatility && o.impliedVolatility > 0);
+      const avgIV = validIVs.length > 0 
+        ? validIVs.reduce((sum, o) => sum + (o.impliedVolatility || 0), 0) / validIVs.length
+        : 0.30;
+      
+      chain.impliedVolatility = avgIV;
+
       // Calculate delta management
-      // Uses 0.6 multiplier by default to account for:
-      // - Covered call sellers (don't need hedging - they own the stock)
-      // - Long positions (don't need hedging)
-      // - Non-market-maker positions
-      // Automatically adjusts based on put/call ratio (high call OI = more covered calls)
       const deltas = calculateDeltaManagement(
         chain.spotPrice,
         allOptions,
-        0.30, // 30% implied volatility (can be made configurable)
-        0.05, // 5% risk-free rate
-        0.6   // Base multiplier: 60% of OI needs hedging (accounts for covered calls, long positions, etc.)
+        avgIV,
+        0.05,
+        0.6,
+        useVolume
       );
 
       setDeltaData(deltas);
       
+      // Calculate Gamma Flip
+      (chain as any).gammaFlip = calculateGammaFlip(deltas);
+
       // Debug: Show OI and calculations for specific strikes (BTC)
       if (tickerSymbol.toUpperCase() === 'BTC') {
         const debugStrikes = [84000, 85000];
@@ -274,6 +292,42 @@ export default function Home() {
     if (!ticker.trim() || !optionsChain) return;
     await fetchData(ticker.trim(), true);
   };
+
+  // Re-calculate deltas when useVolume toggle changes
+  useEffect(() => {
+    if (optionsChain) {
+      const allOptions: OptionData[] = [
+        ...optionsChain.calls.map(c => ({
+          strike: c.strike,
+          openInterest: c.openInterest,
+          volume: c.volume,
+          impliedVolatility: c.impliedVolatility,
+          type: 'call' as const,
+          expiration: c.expiration,
+        })),
+        ...optionsChain.puts.map(p => ({
+          strike: p.strike,
+          openInterest: p.openInterest,
+          volume: p.volume,
+          impliedVolatility: p.impliedVolatility,
+          type: 'put' as const,
+          expiration: p.expiration,
+        })),
+      ];
+
+      const deltas = calculateDeltaManagement(
+        optionsChain.spotPrice,
+        allOptions,
+        optionsChain.impliedVolatility || 0.30,
+        0.05,
+        0.6,
+        useVolume
+      );
+
+      setDeltaData(deltas);
+      (optionsChain as any).gammaFlip = calculateGammaFlip(deltas);
+    }
+  }, [useVolume]);
 
   return (
     <div className={`min-h-screen transition-colors duration-500 ${
@@ -488,6 +542,29 @@ export default function Home() {
                         <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
                       </svg>
                     </button>
+
+                    <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg ml-4">
+                      <button
+                        onClick={() => setUseVolume(false)}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                          !useVolume
+                            ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        OI
+                      </button>
+                      <button
+                        onClick={() => setUseVolume(true)}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                          useVolume
+                            ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        VOL
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <p className="text-sm text-gray-600 dark:text-gray-400">

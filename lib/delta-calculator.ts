@@ -6,6 +6,8 @@
 export interface OptionData {
   strike: number;
   openInterest: number;
+  volume?: number;
+  impliedVolatility?: number;
   type: 'call' | 'put';
   expiration: number; // days to expiration
 }
@@ -14,12 +16,13 @@ export interface DeltaData {
   strike: number;
   delta: number;
   gamma: number;
-  totalDelta: number; // delta * open interest
-  totalGamma: number; // gamma * open interest
+  totalDelta: number; // delta * (OI or Volume)
+  totalGamma: number; // gamma * (OI or Volume)
   openInterest: number;
+  volume: number;
   type: 'call' | 'put';
-  hedgingShares: number; // shares needed to hedge (positive = buy, negative = sell)
-  gammaExposure: number; // gamma exposure (GEX)
+  hedgingShares: number; // shares needed to hedge
+  gammaExposure: number; // GEX
 }
 
 /**
@@ -103,36 +106,37 @@ export function calculateDeltaManagement(
   options: OptionData[],
   volatility: number = 0.30,
   riskFreeRate: number = 0.05,
-  coveredCallMultiplier: number = 0.6 // Adjust based on market structure (0.6 = assume 40% are covered calls)
+  coveredCallMultiplier: number = 0.6,
+  useVolume: boolean = false
 ): DeltaData[] {
   // Calculate put/call ratio to estimate covered calls
-  const totalCallOI = options
+  const totalCallQty = options
     .filter(opt => opt.type === 'call')
-    .reduce((sum, opt) => sum + opt.openInterest, 0);
+    .reduce((sum, opt) => sum + (useVolume ? (opt.volume || 0) : opt.openInterest), 0);
   
-  const totalPutOI = options
+  const totalPutQty = options
     .filter(opt => opt.type === 'put')
-    .reduce((sum, opt) => sum + opt.openInterest, 0);
+    .reduce((sum, opt) => sum + (useVolume ? (opt.volume || 0) : opt.openInterest), 0);
   
-  const putCallRatio = totalPutOI > 0 ? totalCallOI / totalPutOI : 1;
+  const putCallRatio = totalPutQty > 0 ? totalCallQty / totalPutQty : 1;
   
-  // Estimate covered calls: Higher call OI relative to puts suggests more covered calls
-  // Typical covered call stocks have PC ratio > 1.5 (more calls than puts)
-  // Adjust multiplier: if PC ratio is high, more calls might be covered
   let callHedgeMultiplier = coveredCallMultiplier;
   if (putCallRatio > 1.5) {
-    // High call/put ratio suggests more covered calls
-    // Reduce hedging requirement for calls
     callHedgeMultiplier = Math.max(0.4, coveredCallMultiplier - (putCallRatio - 1.5) * 0.1);
   }
   
   return options.map(option => {
-    const timeToExpiry = option.expiration / 365; // convert days to years
+    const quantity = useVolume ? (option.volume || 0) : option.openInterest;
+    const timeToExpiry = option.expiration / 365;
+    
+    // Use option's own IV if available, fallback to provided volatility
+    const vol = option.impliedVolatility || volatility;
+
     const delta = calculateDelta(
       spotPrice,
       option.strike,
       timeToExpiry,
-      volatility,
+      vol,
       riskFreeRate,
       option.type
     );
@@ -141,28 +145,15 @@ export function calculateDeltaManagement(
       spotPrice,
       option.strike,
       timeToExpiry,
-      volatility,
+      vol,
       riskFreeRate
     );
 
-    // Apply multiplier to account for:
-    // 1. Long positions (don't need hedging)
-    // 2. Covered calls (already hedged with stock ownership)
-    // 3. Other non-market-maker positions
     const hedgeMultiplier = option.type === 'call' ? callHedgeMultiplier : coveredCallMultiplier;
     
-    // Total delta exposure = delta * option.openInterest * 100 * hedgeMultiplier
-    const totalDelta = delta * option.openInterest * 100 * hedgeMultiplier;
-    
-    // Total gamma exposure = gamma * option.openInterest * 100 * hedgeMultiplier
-    const totalGamma = gamma * option.openInterest * 100 * hedgeMultiplier;
-    
-    // Hedging shares needed (negative means market makers need to sell)
+    const totalDelta = delta * quantity * 100 * hedgeMultiplier;
+    const totalGamma = gamma * quantity * 100 * hedgeMultiplier;
     const hedgingShares = -totalDelta;
-
-    // Gamma exposure (GEX)
-    // For market makers: Short Calls = -Gamma, Short Puts = +Gamma
-    // Most retail buys calls/puts, so MMs are usually short gamma.
     const gammaExposure = option.type === 'call' ? -totalGamma : totalGamma;
 
     return {
@@ -172,6 +163,7 @@ export function calculateDeltaManagement(
       totalDelta,
       totalGamma,
       openInterest: option.openInterest,
+      volume: option.volume || 0,
       type: option.type,
       hedgingShares,
       gammaExposure,
@@ -194,6 +186,34 @@ export function aggregateDeltaByStrike(deltaData: DeltaData[]): Map<number, { de
   });
   
   return aggregated;
+}
+
+/**
+ * Calculate Gamma Flip level
+ * The price point where net GEX shifts from positive to negative
+ */
+export function calculateGammaFlip(deltaData: DeltaData[]): number | null {
+  if (deltaData.length === 0) return null;
+
+  // Aggregate GEX by strike
+  const aggregated = aggregateDeltaByStrike(deltaData);
+  const strikes = Array.from(aggregated.entries())
+    .map(([strike, data]) => ({ strike, gex: data.gamma }))
+    .sort((a, b) => a.strike - b.strike);
+
+  // Find where GEX crosses zero
+  for (let i = 0; i < strikes.length - 1; i++) {
+    const current = strikes[i];
+    const next = strikes[i+1];
+    
+    if ((current.gex > 0 && next.gex < 0) || (current.gex < 0 && next.gex > 0)) {
+      // Linear interpolation to find more precise flip price
+      const ratio = Math.abs(current.gex) / (Math.abs(current.gex) + Math.abs(next.gex));
+      return current.strike + ratio * (next.strike - current.strike);
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -275,11 +295,18 @@ export function calculateMaxPain(
   // A result is reliable if:
   // 1. We have enough strikes (at least 5)
   // 2. We have some open interest
-  // 3. If spot price is provided, the max pain strike isn't ridiculously far away (more than 50%)
-  let isReliable = totalOI > 0 && strikes.length >= 5;
+  // 3. The max pain strike isn't at the very edge of our data range
+  // 4. If spot price is provided, the max pain strike isn't ridiculously far away (more than 40%)
+  
+  const minDataStrike = strikes[0];
+  const maxDataStrike = strikes[strikes.length - 1];
+  const isAtEdge = maxPainStrike === minDataStrike || maxPainStrike === maxDataStrike;
+  
+  let isReliable = totalOI > 0 && strikes.length >= 8 && !isAtEdge;
+  
   if (isReliable && spotPrice && spotPrice > 0) {
     const distancePercent = Math.abs(maxPainStrike - spotPrice) / spotPrice;
-    if (distancePercent > 0.5) {
+    if (distancePercent > 0.4) {
       isReliable = false;
     }
   }

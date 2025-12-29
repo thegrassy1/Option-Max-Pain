@@ -65,11 +65,21 @@ export class PolygonProvider implements DataProvider {
 
     // Get options contracts list (v3/reference/options/contracts works with Options Basic plan)
     // Target strikes near ATM to avoid getting only deep ITM/OTM contracts due to pagination limits
-    const minStrike = Math.floor(spotPrice * 0.6);
-    const maxStrike = Math.ceil(spotPrice * 1.4);
+    const minStrike = Math.floor(spotPrice * 0.7);
+    const maxStrike = Math.ceil(spotPrice * 1.3);
     
+    // Filter for expirations in the next 6 months to avoid getting only LEAPS
+    const today = new Date();
+    const sixMonthsFromNow = new Date();
+    sixMonthsFromNow.setMonth(today.getMonth() + 6);
+    const dateStr = sixMonthsFromNow.toISOString().split('T')[0];
+    
+    // We want contracts expiring between today and 6 months from now
+    // Polygon doesn't support expiration_date.gte/lte in one call effectively with Basic, 
+    // but we can at least limit the strike range and hope the first 1000 are relevant.
+    // Also adding order=asc and sort=expiration_date to get near-term first.
     const contractsResponse = await fetch(
-      `https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${normalizedTicker}&strike_price.gte=${minStrike}&strike_price.lte=${maxStrike}&limit=1000&apiKey=${this.apiKey}`
+      `https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${normalizedTicker}&strike_price.gte=${minStrike}&strike_price.lte=${maxStrike}&expiration_date.lte=${dateStr}&limit=1000&sort=expiration_date&order=asc&apiKey=${this.apiKey}`
     );
     
     if (!contractsResponse.ok) {

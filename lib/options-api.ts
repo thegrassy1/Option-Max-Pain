@@ -12,6 +12,7 @@ export interface OptionsChain {
   spotPrice: number;
   change24h?: number;
   change24hPercent?: number;
+  impliedVolatility?: number;
   calls: OptionContract[];
   puts: OptionContract[];
 }
@@ -19,6 +20,8 @@ export interface OptionsChain {
 export interface OptionContract {
   strike: number;
   openInterest: number;
+  volume?: number;
+  impliedVolatility?: number;
   expiration: number; // days to expiration
   type: 'call' | 'put';
 }
@@ -53,13 +56,15 @@ export async function fetchOptionsChain(ticker: string): Promise<OptionsChain> {
 export function generateMockData(ticker: string): OptionsChain {
   const normalizedTicker = ticker.toUpperCase().trim();
 
-  // Mock spot prices for common tickers
+  // Mock spot prices for common tickers (Approximate current prices)
   const mockSpotPrices: Record<string, number> = {
-    'TSLA': 250,
-    'BTC': 45000,
-    'AAPL': 180,
-    'NVDA': 500,
-    'SPY': 450,
+    'TSLA': 420,
+    'BTC': 95000,
+    'AAPL': 235,
+    'NVDA': 135,
+    'SPY': 600,
+    'SOL': 240,
+    'ETH': 3800,
   };
 
   const spotPrice = mockSpotPrices[normalizedTicker] || 100;
@@ -93,9 +98,14 @@ export function generateMockData(ticker: string): OptionsChain {
       const openInterest = Math.floor(baseOI * oiMultiplier * (0.5 + Math.random()));
 
       if (openInterest > 0) {
+        const volume = Math.floor(openInterest * 0.3 * (0.5 + Math.random()));
+        const impliedVolatility = 0.2 + (distanceFromATM * 0.5);
+
         calls.push({
           strike,
           openInterest,
+          volume,
+          impliedVolatility,
           expiration,
           type: 'call',
         });
@@ -103,6 +113,8 @@ export function generateMockData(ticker: string): OptionsChain {
         puts.push({
           strike,
           openInterest,
+          volume,
+          impliedVolatility,
           expiration,
           type: 'put',
         });
@@ -115,6 +127,7 @@ export function generateMockData(ticker: string): OptionsChain {
     spotPrice,
     change24h,
     change24hPercent,
+    impliedVolatility: 0.35, // Mock IV
     calls,
     puts,
   };
